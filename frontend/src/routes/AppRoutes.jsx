@@ -6,10 +6,9 @@ import UserDashboard from "../pages/user/Dashboard";
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<Login />} /> {/* default route */}
+    {/*   <Route path="/" element={<Login />} /> default route */}
       <Route path="/login" element={<Login />} />
       <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/dashboard" element={<UserDashboard />} /> {/* matches your login redirect */}
       <Route path="/user" element={<UserDashboard />} />
     </Routes>
   );

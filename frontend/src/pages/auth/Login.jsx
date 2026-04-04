@@ -1,10 +1,11 @@
 import { useState, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
+import API from "../../services/api";
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    username: "", // or email depending on backend
+    username: "",
     password: "",
   });
 
@@ -24,15 +25,20 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const res = await login(formData);
+      // 1️⃣ Login (stores tokens + sets user in context)
+      await login(formData);
 
-      console.log("Login success:", res.data);
+      // 2️⃣ Get user info (role)
+      const res = await API.get("/auth/me/");
+      const user = res.data;
 
-      // ✅ Optional: role-based redirect
-      if (res.data.user?.role === "admin") {
+      console.log("User:", user);
+
+      // 3️⃣ Role-based redirect
+      if (user.is_admin) {
         navigate("/admin");
       } else {
-        navigate("/dashboard");
+        navigate("/user");
       }
 
     } catch (err) {
@@ -53,17 +59,15 @@ const Login = () => {
           Login
         </h2>
 
-        {/* Username or Email */}
         <input
           type="text"
           name="username"
-          placeholder="Username or Email"
+          placeholder="Username"
           className="w-full p-2 mb-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
           value={formData.username}
           onChange={handleChange}
         />
 
-        {/* Password */}
         <input
           type="password"
           name="password"
@@ -73,7 +77,6 @@ const Login = () => {
           onChange={handleChange}
         />
 
-        {/* Button */}
         <button
           type="submit"
           disabled={loading}

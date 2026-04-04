@@ -7,21 +7,15 @@ export const AuthProvider = ({ children }) => {
 
   // 🔐 LOGIN
   const login = async (credentials) => {
-    try {
-      const res = await API.post("/auth/login/", credentials);
+    const res = await API.post("/auth/login/", credentials);
 
-      // Save tokens
-      localStorage.setItem("access", res.data.access);
-      localStorage.setItem("refresh", res.data.refresh);
+    localStorage.setItem("access", res.data.access);
+    localStorage.setItem("refresh", res.data.refresh);
 
-      // Save user
-      setUser(res.data.user || res.data);
+    const me = await API.get("/auth/me/");
+    setUser(me.data);
 
-      return res;
-    } catch (error) {
-      console.error("Login error:", error.response?.data || error.message);
-      throw error;
-    }
+    return res;
   };
 
   // 🚪 LOGOUT
@@ -29,8 +23,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await API.post("/auth/logout/");
     } catch (err) {
-      // ✅ ESLint FIX (use err)
-      console.warn("Logout API failed:", err.message);
+      console.warn(err.message);
     }
 
     localStorage.removeItem("access");
@@ -38,7 +31,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  // 👤 AUTO LOAD USER ON APP START
+  // 👤 AUTO LOAD USER
   useEffect(() => {
     const loadUser = async () => {
       const token = localStorage.getItem("access");
@@ -47,8 +40,8 @@ export const AuthProvider = ({ children }) => {
         try {
           const res = await API.get("/auth/me/");
           setUser(res.data);
-        } catch (error) {
-          console.error("Auto login failed:", error);
+        // eslint-disable-next-line no-unused-vars
+        } catch (err) {
           logout();
         }
       }
