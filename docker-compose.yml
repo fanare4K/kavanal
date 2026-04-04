@@ -29,5 +29,18 @@ services:
       - DB_USER=root
       - DB_PASSWORD=password
 
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - auth-service
+
 volumes:
   db_data:
