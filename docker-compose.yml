@@ -1,0 +1,96 @@
+version: '3.9'
+
+services:
+
+  db:
+    image: mysql:8
+    container_name: auth-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: auth_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: auth-service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/auth-service:/app
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_NAME=auth_db
+      - DB_USER=root
+      - DB_PASSWORD=password
+
+
+    order-service:
+    build: ./services/order-service
+    container_name: order-service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/order-service:/app
+    depends_on:
+      - db
+      - auth-service
+    environment:
+      - DB_HOST=db
+      - DB_NAME=auth_db  # ضع اسم قاعدة البيانات التي يحتاجها
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - AUTH_SERVICE_URL=http://auth-service:8000  # إذا يحتاج الاتصال بخدمة المصادقة
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - auth-service
+      - order-service
+
+
+  # ===== PRODUCT DATABASE =====
+  product-db:
+    image: mysql:8
+    container_name: product-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: product_db
+    ports:
+      - "3308:3306"
+    volumes:
+      - product_db_data:/var/lib/mysql
+
+  # ===== PRODUCT SERVICE =====
+  product-service:
+    build: ./services/product-service
+    container_name: product-service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/product-service:/app
+    depends_on:
+      - product-db
+    environment:
+      - DB_HOST=product-db
+      - DB_NAME=product_db
+      - DB_USER=root
+      - DB_PASSWORD=root
+
+volumes:
+  db_data:
+  product_db_data:
