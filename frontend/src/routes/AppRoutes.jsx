@@ -7,16 +7,16 @@ import AdminDashboard from "../pages/admin/Dashboard";
 import UserDashboard from "../pages/user/Dashboard";
 
 const AppRoutes = () => {
-  const location = useLocation(); // ✅ MUST be inside component
+  const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Auth صفحات مع animation */}
+        {/* Auth routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* باقي الصفحات بدون تأثير خاص */}
+        {/* Dashboard routes */}
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/user" element={<UserDashboard />} />
       </Routes>

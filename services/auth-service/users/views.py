@@ -1,31 +1,40 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated, AllowAny
+
 from .models import User
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, PublicUserSerializer
 from authentication.permissions import IsAdminUser
-from rest_framework.permissions import IsAuthenticated
 
 
 class UserListView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminUser()]
 
     def get(self, request):
         users = User.objects.all()
-        serializer = RegisterSerializer(users, many=True)
+        serializer = PublicUserSerializer(users, many=True)
         return Response(serializer.data)
 
 
 class UserDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated(), IsAdminUser()]
 
     def get(self, request, pk):
-        user = User.objects.get(pk=pk)
-        serializer = RegisterSerializer(user)
+        user = get_object_or_404(User, pk=pk)
+        serializer = PublicUserSerializer(user)
         return Response(serializer.data)
 
     def put(self, request, pk):
-        user = User.objects.get(pk=pk)
+        user = get_object_or_404(User, pk=pk)
         serializer = RegisterSerializer(user, data=request.data, partial=True)
 
         if serializer.is_valid():
@@ -35,6 +44,6 @@ class UserDetailView(APIView):
         return Response(serializer.errors, status=400)
 
     def delete(self, request, pk):
-        user = User.objects.get(pk=pk)
+        user = get_object_or_404(User, pk=pk)
         user.delete()
         return Response({"message": "User deleted"})
