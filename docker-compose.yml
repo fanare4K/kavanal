@@ -29,6 +29,24 @@ services:
       - DB_USER=root
       - DB_PASSWORD=password
 
+
+  order-service:
+    build: ./services/order-service
+    container_name: order-service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/order-service:/app
+    depends_on:
+      - db
+      - auth-service
+    environment:
+      - DB_HOST=db
+      - DB_NAME=auth_db  # ضع اسم قاعدة البيانات التي يحتاجها
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - AUTH_SERVICE_URL=http://auth-service:8000  # إذا يحتاج الاتصال بخدمة المصادقة
+
   frontend:
     build: ./frontend
     container_name: frontend
@@ -41,6 +59,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - auth-service
+      - order-service
 
 volumes:
   db_data:
