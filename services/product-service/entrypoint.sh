@@ -1,13 +1,12 @@
 #!/bin/sh
 
-echo "Waiting for MySQL..."
+echo "Waiting for DB..."
 
-while ! nc -z product-db 3306; do
-  sleep 1
+until nc -z product-db 3306; do
+  sleep 2
 done
 
-echo "MySQL is ready!"
+echo "DB ready"
 
 python manage.py migrate
-
 exec python manage.py runserver 0.0.0.0:8000

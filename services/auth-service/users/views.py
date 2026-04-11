@@ -20,6 +20,13 @@ class UserListView(APIView):
         serializer = PublicUserSerializer(users, many=True)
         return Response(serializer.data)
 
+    def post(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
 
 class UserDetailView(APIView):
 
