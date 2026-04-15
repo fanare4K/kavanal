@@ -1,49 +1,41 @@
 import { useState, useEffect } from "react";
 import { AuthContext } from "./AuthContext";
-import API from "../services/api";
+import { login as loginAPI } from "../services/authService";
+import { getUser } from "../services/userService";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   // 🔐 LOGIN
   const login = async (credentials) => {
-    const res = await API.post("/auth/login/", credentials);
+    const data = await loginAPI(credentials);
 
-    localStorage.setItem("access", res.data.access);
-    localStorage.setItem("refresh", res.data.refresh);
+    const userId = localStorage.getItem("user_id");
 
-    const me = await API.get("/auth/me/");
-    setUser(me.data);
+    const res = await getUser(userId);
+    setUser(res.data);
 
-    return res;
+    return data;
   };
 
   // 🚪 LOGOUT
-  const logout = async () => {
-    try {
-      await API.post("/auth/logout/");
-    } catch (err) {
-      console.warn(err.message);
-    }
-
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+  const logout = () => {
+    localStorage.clear();
     setUser(null);
   };
 
   // 👤 AUTO LOAD USER
   useEffect(() => {
     const loadUser = async () => {
-      const token = localStorage.getItem("access");
+      const userId = localStorage.getItem("user_id");
 
-      if (token) {
-        try {
-          const res = await API.get("/auth/me/");
-          setUser(res.data);
-        // eslint-disable-next-line no-unused-vars
-        } catch (err) {
-          logout();
-        }
+      if (!userId) return;
+
+      try {
+        const res = await getUser(userId);
+        setUser(res.data);
+      } catch (err) {
+        logout();
       }
     };
 
