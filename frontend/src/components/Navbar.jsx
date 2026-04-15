@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import ThemeToggle from "./ThemeToggle"; // adjust path if needed
+import logo from "../assets/img/logo/img.png";
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -9,10 +10,18 @@ const Navbar = () => {
     <nav className="w-full fixed top-0 left-0 z-50 backdrop-blur-lg bg-white/70 dark:bg-dark-background/70 shadow-md transition-all">
       <div className="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center">
 
-        {/* Logo */}
-        <div className="text-2xl font-bold text-light-text dark:text-dark-text">
-          Kavanal
-        </div>
+       {/* Logo Text */}
+<div className="flex items-center text-2xl font-bold text-light-text dark:text-dark-text">
+  <span>Kav</span>
+
+ <img
+  src={logo}
+  alt="logo"
+  className="h-6 w-auto mx-1 inline-block align-middle"
+/>
+
+  <span>nal</span>
+</div>
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-8">
