@@ -1,46 +1,52 @@
 import { useState, useEffect } from "react";
 import { AuthContext } from "./AuthContext";
 import { login as loginAPI } from "../services/authService";
-import { getUser } from "../services/userService";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  // 🔐 LOGIN
+  // LOGIN
   const login = async (credentials) => {
-    const data = await loginAPI(credentials);
+    const user = await loginAPI(credentials);
 
-    const userId = localStorage.getItem("user_id");
-
-    const res = await getUser(userId);
-    setUser(res.data);
-
-    return data;
+    setUser(user);
+    return user;
   };
 
-  // 🚪 LOGOUT
+  // LOGOUT
   const logout = () => {
     localStorage.clear();
     setUser(null);
   };
 
-  // 👤 AUTO LOAD USER
-  useEffect(() => {
-    const loadUser = async () => {
-      const userId = localStorage.getItem("user_id");
+  // AUTO LOAD USER
+ useEffect(() => {
+  const loadUser = async () => {
+    const token = localStorage.getItem("access");
 
-      if (!userId) return;
+    if (!token) return;
 
-      try {
-        const res = await getUser(userId);
-        setUser(res.data);
-      } catch (err) {
+    try {
+      const res = await getUser(); // 👈 DO NOT use localStorage user
+      const user = res.data;
+
+      // ❌ INVALID ROLE CHECK
+      if (!user) {
         logout();
+        return;
       }
-    };
 
-    loadUser();
-  }, []);
+      setUser(user);
+
+      localStorage.setItem("user", JSON.stringify(user));
+
+    } catch (err) {
+      logout();
+    }
+  };
+
+  loadUser();
+}, []);
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

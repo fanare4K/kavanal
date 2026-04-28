@@ -20,7 +20,7 @@ const Signup = () => {
     last_name: "",
     phone_number: "",
   });
-
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [index, setIndex] = useState(0); // ✅ FIX: missing state
   const navigate = useNavigate();
@@ -40,8 +40,8 @@ const Signup = () => {
     await API.post("/auth/register/", formData);
 
     // Get current user after registration
-    const res = await API.get("/auth/me/");
-    const user = res.data;
+    await API.post("/auth/register/", formData);
+    navigate("/user");
 
     if (user.is_admin) {
       navigate("/admin");
@@ -50,7 +50,8 @@ const Signup = () => {
     }
 
   } catch (err) {
-    alert("Signup failed");
+    console.error(err);
+    setError("Signup failed. Please try again.");
   } finally {
     setLoading(false);
   }
@@ -140,6 +141,11 @@ const Signup = () => {
             >
               {loading ? "Creating..." : "Sign Up"}
             </button>
+            {error && (
+  <div className="text-red-400 text-sm text-center mt-3">
+    {error}
+  </div>
+)}
           </form>
 
           <p className="text-sm text-gray-400 mt-6 text-center">

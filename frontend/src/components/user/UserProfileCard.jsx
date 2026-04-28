@@ -1,51 +1,50 @@
 import { useState, useEffect } from "react";
-import { FiEdit2, FiLogOut, FiSave, FiX,FiEye, FiEyeOff } from "react-icons/fi";
-import { updateUser, getUser } from "../../services/userService";
-import { logout } from "../../services/authService";
+import { FiEdit2, FiLogOut, FiSave, FiX, FiEye, FiEyeOff } from "react-icons/fi";
+import { updateUser } from "../../services/userService";
+import API from "../../services/api";
 import { useNavigate } from "react-router-dom";
-
 
 const UserProfileCard = ({ user: initialUser, setUser }) => {
   const [editMode, setEditMode] = useState(false);
-  const [user, setLocalUser] = useState(initialUser || null);
+  const [user, setLocalUser] = useState(null);
   const [form, setForm] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  // 🔥 FIX 1: always ensure user is loaded from API if missing
+  // 🔥 FIX: load user ONCE from backend (single source of truth)
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const id = initialUser?.id || localStorage.getItem("user_id");
+        const res = await API.get("/auth/me/");
+        const currentUser = res.data;
 
-        if (!id) return;
-
-        const res = await getUser(id);
-
-        setLocalUser(res.data);
-        setUser?.(res.data);
+        setLocalUser(currentUser);
+        setUser?.(currentUser);
       } catch (err) {
         console.log(err);
+        navigate("/login");
       }
     };
 
-    if (!initialUser || !initialUser.first_name) {
-      loadUser();
-    }
-  }, [initialUser]);
+    loadUser();
+  }, [navigate, setUser]);
 
-  // 🔥 build form safely
+  // 🔥 FIX: initialize form ONLY ONCE (prevents typing freeze)
   useEffect(() => {
-    if (user) {
-      setForm({
+    if (!user) return;
+
+    setForm((prev) => {
+      if (Object.keys(prev).length > 0) return prev;
+
+      return {
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         username: user.username || "",
         email: user.email || "",
         phone_number: user.phone_number || "",
         password: "",
-      });
-    }
+      };
+    });
   }, [user]);
 
   if (!user) {
@@ -56,10 +55,16 @@ const UserProfileCard = ({ user: initialUser, setUser }) => {
     );
   }
 
-  const getValue = (v1, v2) => v1 || v2 || "-";
+  const getValue = (v1) => v1 || "-";
 
+  // 🔥 FIX: stable controlled input update
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSave = async () => {
@@ -80,6 +85,7 @@ const UserProfileCard = ({ user: initialUser, setUser }) => {
 
   const handleCancel = () => {
     setEditMode(false);
+
     setForm({
       first_name: user.first_name || "",
       last_name: user.last_name || "",
@@ -93,23 +99,24 @@ const UserProfileCard = ({ user: initialUser, setUser }) => {
   const handleLogout = async () => {
     try {
       const refresh = localStorage.getItem("refresh");
-      await logout(refresh);
 
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
+      await API.post("/auth/logout/", { refresh });
 
-      navigate("/login");
     } catch (err) {
       console.log(err);
     }
+
+    localStorage.clear();
+    navigate("/login", { replace: true });
   };
 
   const Input = ({ name, type = "text" }) => (
     <input
       type={type}
       name={name}
-      value={form[name] || ""}
+      value={form?.[name] ?? ""}
       onChange={handleChange}
+      autoComplete="off"
       className="
         w-full px-4 py-2 rounded-xl border
         bg-light-background dark:bg-dark-background
@@ -165,7 +172,7 @@ const UserProfileCard = ({ user: initialUser, setUser }) => {
           {editMode ? (
             <Input name="first_name" />
           ) : (
-            <Display value={getValue(user.first_name, user.firstName)} />
+            <Display value={getValue(user.first_name)} />
           )}
         </Field>
 
@@ -173,7 +180,7 @@ const UserProfileCard = ({ user: initialUser, setUser }) => {
           {editMode ? (
             <Input name="last_name" />
           ) : (
-            <Display value={getValue(user.last_name, user.lastName)} />
+            <Display value={getValue(user.last_name)} />
           )}
         </Field>
 
@@ -197,35 +204,35 @@ const UserProfileCard = ({ user: initialUser, setUser }) => {
           {editMode ? (
             <Input name="phone_number" />
           ) : (
-            <Display value={getValue(user.phone_number, user.phoneNumber)} />
+            <Display value={getValue(user.phone_number)} />
           )}
         </Field>
 
         <Field label="Password">
-  {editMode ? (
-    <div className="relative">
-      <Input
-        name="password"
-        type={showPassword ? "text" : "password"}
-      />
+          {editMode ? (
+            <div className="relative">
+              <Input
+                name="password"
+                type={showPassword ? "text" : "password"}
+              />
 
-      <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        className="
-          absolute right-3 top-1/2 -translate-y-1/2
-          text-light-text/60 dark:text-dark-text/60
-          hover:text-light-primary dark:hover:text-dark-primary
-          transition
-        "
-      >
-        {showPassword ? <FiEyeOff /> : <FiEye />}
-      </button>
-    </div>
-  ) : (
-    <Display value="••••••••" />
-  )}
-</Field>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="
+                  absolute right-3 top-1/2 -translate-y-1/2
+                  text-light-text/60 dark:text-dark-text/60
+                  hover:text-light-primary dark:hover:text-dark-primary
+                  transition
+                "
+              >
+                {showPassword ? <FiEyeOff /> : <FiEye />}
+              </button>
+            </div>
+          ) : (
+            <Display value="••••••••" />
+          )}
+        </Field>
 
       </div>
 

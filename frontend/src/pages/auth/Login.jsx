@@ -19,6 +19,8 @@ const Login = () => {
     password: "",
   });
 
+ const [error, setError] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [index, setIndex] = useState(0); // ✅ slider index
 
@@ -37,19 +39,16 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(formData);
+  await login(formData);
+  const res = await API.get("/auth/me/");
+  const user = res.data;
 
-      const res = await API.get("/auth/me/");
-      const user = res.data;
+  if (user.is_admin) navigate("/admin");
+  else navigate("/user");
 
-      if (user.is_admin) {
-        navigate("/admin");
-      } else {
-        navigate("/user");
-      }
-    } catch (err) {
-      alert("Invalid credentials");
-    } finally {
+} catch (err) {
+  setError("Invalid username or password");
+} finally {
       setLoading(false);
     }
   };
@@ -150,12 +149,19 @@ const Login = () => {
             />
 
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-lg bg-light-primary text-black font-semibold hover:opacity-90 transition"
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
+  type="submit"
+  disabled={loading}
+  className="w-full py-3 rounded-lg bg-light-primary text-black font-semibold hover:opacity-90 transition"
+>
+  {loading ? "Logging in..." : "Login"}
+</button>
+
+{/* ✅ ERROR MESSAGE HERE */}
+{error && (
+  <div className="text-red-400 text-sm text-center mt-3">
+    {error}
+  </div>
+)}
           </form>
 
           <p className="text-sm text-gray-400 mt-6 text-center">

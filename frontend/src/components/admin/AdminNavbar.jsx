@@ -9,19 +9,30 @@ const AdminNavbar = () => {
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
 
-  // GET USER
+  // GET USER (FIXED LOGIC ONLY)
   useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const res = await API.get("/auth/me/");
-        setUsername(res.data.username);
-      } catch (error) {
-        console.error(error);
-      }
-    };
+    const user = localStorage.getItem("user");
 
-    fetchMe();
-  }, []);
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(user);
+
+      // ❌ BLOCK NON ADMIN (IMPORTANT FIX)
+      if (!parsed.is_admin) {
+        navigate("/user");
+        return;
+      }
+
+      setUsername(parsed.username || "");
+    } catch (error) {
+      console.error("Invalid user in localStorage", error);
+      navigate("/login");
+    }
+  }, [navigate]);
 
   // LOGOUT
   const handleLogout = async () => {
@@ -30,18 +41,16 @@ const AdminNavbar = () => {
 
       await API.post("/auth/logout/", { refresh });
 
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-
-      navigate("/login");
     } catch (error) {
       console.error(error);
-
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
-
-      navigate("/login");
     }
+
+    // clear all session data
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("user");
+
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -54,10 +63,9 @@ const AdminNavbar = () => {
     >
       {/* LEFT */}
       <div className="flex items-center gap-4">
-        
 
         <h1 className="text-xl font-bold">
-          Welcome, {username || "Admin"}
+          Welcome, {username}
         </h1>
       </div>
 
