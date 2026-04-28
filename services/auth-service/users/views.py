@@ -18,7 +18,9 @@ class UserListView(APIView):
 
 
 class UserDetailView(APIView):
+
     permission_classes = [IsAuthenticated, IsAdminUser]
+
 
     def get(self, request, pk):
         user = get_object_or_404(User, pk=pk)
@@ -27,6 +29,11 @@ class UserDetailView(APIView):
 
     def put(self, request, pk):
         user = get_object_or_404(User, pk=pk)
+
+        # ✅ SECURITY: user can edit himself OR admin
+        if request.user != user and not request.user.is_staff:
+            return Response({"error": "Not allowed"}, status=403)
+
         serializer = RegisterSerializer(user, data=request.data, partial=True)
 
         if serializer.is_valid():
@@ -37,5 +44,10 @@ class UserDetailView(APIView):
 
     def delete(self, request, pk):
         user = get_object_or_404(User, pk=pk)
+
+        # ✅ Only admin can delete
+        if not request.user.is_staff:
+            return Response({"error": "Only admin can delete users"}, status=403)
+
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
