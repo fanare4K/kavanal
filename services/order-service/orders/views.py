@@ -1,46 +1,143 @@
-from rest_framework import viewsets, status
+import requests
+from django.db import transaction
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Order
-from .serializers import OrderSerializer
-from .services import verify_user, get_product
-from .events.publisher import publish_event
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from rest_framework import status
 
-class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
+from .models import Order, OrderItem
+from .serializers import OrderSerializer, CreateOrderItemSerializer
 
-    def create(self, request, *args, **kwargs):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return Response({"error": "Authorization header missing"}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        token = auth_header.split(" ")[1]
 
-        # ✅ Verify user
-        user_data = verify_user(token)
-        if not user_data:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+# =========================
+# 🔥 Create Order
+# =========================
+class CreateOrderView(APIView):
+    permission_classes = [IsAuthenticated]
 
-        # ✅ Add price to each item
-        items = request.data.get("items", [])
-        for item in items:
-            product = get_product(item["product_id"])
-            if not product:
-                return Response({"error": f"Product {item['product_id']} not found"}, status=status.HTTP_400_BAD_REQUEST)
-            item["price"] = product["price"]
+    def post(self, request):
+        token = request.auth
+        user_id = token["user_id"]
 
-        # ✅ Save order
-        serializer = self.get_serializer(data=request.data)
+        items_data = request.data.get("items", [])
+
+        if not items_data:
+            return Response({"error": "No items provided"}, status=400)
+
+        # ✅ Validate items
+        serializer = CreateOrderItemSerializer(data=items_data, many=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save(user_id=user_data["id"])  # attach real user_id
+        items = serializer.validated_data
 
-        order = serializer.data
+        product_ids = [item["product_id"] for item in items]
 
-        # ✅ Publish event
-        publish_event("order_created", {
-            "order_id": order["id"],
-            "user_id": order["user_id"],
-            "total_price": order["total_price"]
-        })
+        # 🧠 Call product-service
+        try:
+            res = requests.post(
+                "http://localhost:8002/api/products/bulk/",
+                json={"ids": product_ids},
+                timeout=5
+            )
 
-        return Response(order)
+            if res.status_code != 200:
+                return Response(
+                    {"error": "Product service error"},
+                    status=500
+                )
+
+            products = res.json()
+
+        except requests.exceptions.RequestException:
+            return Response(
+                {"error": "Product service unavailable"},
+                status=500
+            )
+
+        products_dict = {p["id"]: p for p in products}
+
+        # 🔥 Create order safely
+        with transaction.atomic():
+            order = Order.objects.create(user_id=user_id)
+
+            for item in items:
+                product = products_dict.get(item["product_id"])
+
+                if not product:
+                    return Response(
+                        {"error": f"Product {item['product_id']} not found"},
+                        status=400
+                    )
+
+                OrderItem.objects.create(
+                    order=order,
+                    product_id=product["id"],
+                    quantity=item["quantity"],
+                    price=product["price"]
+                )
+
+        return Response({
+            "message": "Order created",
+            "order_id": str(order.id)
+        }, status=201)
+
+
+# =========================
+# 📦 My Orders
+# =========================
+class MyOrdersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_id = request.auth["user_id"]
+        orders = Order.objects.filter(user_id=user_id)
+
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data)
+
+
+# =========================
+# 🔍 Order Detail
+# =========================
+class OrderDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        user_id = request.auth["user_id"]
+        order = get_object_or_404(Order, pk=pk)
+
+        if order.user_id != user_id:
+            return Response({"error": "Unauthorized"}, status=403)
+
+        serializer = OrderSerializer(order)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        user_id = request.auth["user_id"]
+        order = get_object_or_404(Order, pk=pk)
+
+        if order.user_id != user_id:
+            return Response({"error": "Unauthorized"}, status=403)
+
+        status_value = request.data.get("status")
+
+        if status_value:
+            order.status = status_value
+            order.save()
+
+        return Response({"message": "Order updated"})
+
+    def delete(self, request, pk):
+        user_id = request.auth["user_id"]
+        order = get_object_or_404(Order, pk=pk)
+
+        # 🔒 Check ownership
+        if order.user_id != user_id:
+            return Response({"error": "Unauthorized"}, status=403)
+
+        # ⚠️ Only pending orders can be deleted
+        if order.status != "pending":
+            return Response({"error": "Cannot delete this order"}, status=400)
+
+        order.delete()
+        return Response(status=204)
