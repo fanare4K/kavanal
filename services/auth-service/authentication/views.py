@@ -19,7 +19,7 @@ class RegisterView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             #return Response({"message": "User created"}, status=201)
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=400)
 
 
@@ -35,7 +35,12 @@ class LoginView(APIView):
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
-            })
+                 'user': {
+                      'id': user.id,
+                      'username': user.username,
+                      'is_admin': user.is_staff
+    }
+            }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=400)
     

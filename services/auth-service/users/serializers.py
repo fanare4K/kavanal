@@ -26,15 +26,3 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-class PublicUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            'id',
-            'first_name',
-            'last_name',
-            'username',
-            'email',
-            'phone_number',
-            'profile_image'
-        ]
