@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { FaTachometerAlt, FaUsers, FaCog } from "react-icons/fa";
+import { FaTachometerAlt, FaUsers, FaCog, FaList, FaBox  } from "react-icons/fa";
 import { NavLink } from "react-router-dom";
 import logo from "../../assets/img/logo/img.png";
 
 const menu = [
   { name: "Dashboard", icon: FaTachometerAlt, path: "/admin", end: true },
   { name: "Users", icon: FaUsers, path: "/admin/users" },
+  { name: "Categories", icon: FaList, path: "/admin/categories" },
+  { name: "Products", icon: FaBox, path: "/admin/products" },
   { name: "Settings", icon: FaCog, path: "/admin/settings" },
 ];
 

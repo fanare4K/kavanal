@@ -9,10 +9,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    # For reading (GET)
     category = CategorySerializer(read_only=True)
 
-    # For writing (POST/PUT)
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
         source='category',
@@ -28,5 +26,6 @@ class ProductSerializer(serializers.ModelSerializer):
             'description',
             'stock',
             'category',
-            'category_id'
+            'category_id',
+            'image',   # ✅ FIXED
         ]
